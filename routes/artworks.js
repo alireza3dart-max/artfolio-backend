@@ -20,13 +20,18 @@ const auth = (req, res, next) => {
 router.post('/', auth, upload.array('images', 10), async (req, res) => {
   try {
     const { title, description, category, tags, price, software } = req.body;
-    if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'No images uploaded' });
+    if (!title || title.trim().length < 2) return res.status(400).json({ message: 'Title must be at least 2 characters' });
+    if (title.length > 100) return res.status(400).json({ message: 'Title too long (max 100 chars)' });
+    if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'At least one image required' });
+    if (price && (isNaN(price) || price < 0 || price > 10000)) return res.status(400).json({ message: 'Invalid price' });
     const imageUrls = req.files.map(f => f.path);
     const artwork = await Artwork.create({
-      title, description, category,
-      tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-      software: software ? software.split(',').map(s => s.trim()).filter(Boolean) : [],
-      price: price || 0,
+      title: title.trim(),
+      description: description?.trim() || '',
+      category: category || 'Other',
+      tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10) : [],
+      software: software ? software.split(',').map(s => s.trim()).filter(Boolean).slice(0, 10) : [],
+      price: Math.max(0, Math.min(10000, Number(price) || 0)),
       img: imageUrls[0],
       images: imageUrls,
       artist: req.user.id,
