@@ -3,11 +3,12 @@ const mongoose = require('mongoose');
 const artworkSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, default: '' },
-  image: { type: String, required: true },
-  category: { type: String, default: '' },
+  category: { type: String, default: 'Other' },
   tags: [String],
+  price: { type: Number, default: 0 },
+  img: { type: String, required: true },
   artist: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  likes: { type: Number, default: 0 },
   views: { type: Number, default: 0 },
 }, { timestamps: true });
 

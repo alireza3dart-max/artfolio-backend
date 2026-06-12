@@ -1,38 +1,32 @@
 const express = require('express');
-const multer = require('multer');
-const path = require('path');
+const jwt = require('jsonwebtoken');
+const { upload, cloudinary } = require('../middleware/upload');
 const Artwork = require('../models/Artwork');
-const auth = require('../middleware/auth');
-
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
-});
-const upload = multer({ storage });
-
-// Get all artworks
-router.get('/', async (req, res) => {
+const auth = (req, res, next) => {
   try {
-    const artworks = await Artwork.find().populate('artist', 'name avatar').sort('-createdAt');
-    res.json(artworks);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'No token' });
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ message: 'Invalid token' });
   }
-});
+};
 
 // Upload artwork
 router.post('/', auth, upload.single('image'), async (req, res) => {
   try {
-    const { title, description, category, tags } = req.body;
+    const { title, description, category, tags, price } = req.body;
     const artwork = await Artwork.create({
       title,
       description,
       category,
       tags: tags ? tags.split(',') : [],
-      image: req.file.filename,
-      artist: req.user.id
+      price: price || 0,
+      img: req.file.path,
+      artist: req.user.id,
     });
     res.json(artwork);
   } catch (err) {
@@ -40,18 +34,36 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
   }
 });
 
-// Like artwork
-router.put('/:id/like', auth, async (req, res) => {
+// Get all artworks
+router.get('/', async (req, res) => {
+  try {
+    const artworks = await Artwork.find().populate('artist', 'name avatar').sort({ createdAt: -1 });
+    res.json(artworks);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get artwork by id
+router.get('/:id', async (req, res) => {
+  try {
+    const artwork = await Artwork.findById(req.params.id).populate('artist', 'name avatar');
+    if (!artwork) return res.status(404).json({ message: 'Not found' });
+    res.json(artwork);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Delete artwork
+router.delete('/:id', auth, async (req, res) => {
   try {
     const artwork = await Artwork.findById(req.params.id);
-    const liked = artwork.likes.includes(req.user.id);
-    if (liked) {
-      artwork.likes = artwork.likes.filter(id => id.toString() !== req.user.id);
-    } else {
-      artwork.likes.push(req.user.id);
-    }
-    await artwork.save();
-    res.json(artwork);
+    if (!artwork) return res.status(404).json({ message: 'Not found' });
+    if (artwork.artist.toString() !== req.user.id) return res.status(403).json({ message: 'Not authorized' });
+    await cloudinary.uploader.destroy(artwork.img.split('/').pop().split('.')[0]);
+    await artwork.deleteOne();
+    res.json({ message: 'Deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
