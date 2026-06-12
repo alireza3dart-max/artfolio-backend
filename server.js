@@ -82,6 +82,7 @@ const ticketRoutes = require('./routes/tickets');
 const notificationRoutes = require('./routes/notifications');
 const messageRoutes = require('./routes/messages');
 const leaderboardRoutes = require('./routes/leaderboard');
+const walletRoutes = require('./routes/wallet');
 
 // Apply specific limiters
 app.use('/api/auth/login', authLimiter);
@@ -98,6 +99,7 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/wallet', walletRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: '🎨 ArtFolio API is running!', version: '2.0' });
