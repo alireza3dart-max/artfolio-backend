@@ -16,12 +16,14 @@ const artworkRoutes = require('./routes/artworks');
 const cartRoutes = require('./routes/cart');
 const adminRoutes = require('./routes/admin');
 const ticketRoutes = require('./routes/tickets');
+const notificationRoutes = require('./routes/notifications');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/artworks', artworkRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/tickets', ticketRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: '🎨 ArtFolio API is running!' });

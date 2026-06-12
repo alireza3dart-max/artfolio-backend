@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { upload, cloudinary } = require('../middleware/upload');
 const Artwork = require('../models/Artwork');
+const Notification = require('../models/Notification');
 const router = express.Router();
 
 const auth = (req, res, next) => {
@@ -62,7 +63,7 @@ router.get('/:id', async (req, res) => {
 // Toggle Like
 router.post('/:id/like', auth, async (req, res) => {
   try {
-    const artwork = await Artwork.findById(req.params.id);
+    const artwork = await Artwork.findById(req.params.id).populate('artist', '_id');
     if (!artwork) return res.status(404).json({ message: 'Not found' });
     const alreadyLiked = artwork.likedBy?.map(id => id.toString()).includes(req.user.id);
     if (alreadyLiked) {
@@ -71,6 +72,15 @@ router.post('/:id/like', auth, async (req, res) => {
     } else {
       artwork.likes += 1;
       artwork.likedBy = [...(artwork.likedBy || []), req.user.id];
+      if (artwork.artist._id.toString() !== req.user.id) {
+        await Notification.create({
+          recipient: artwork.artist._id,
+          sender: req.user.id,
+          type: 'like',
+          message: 'liked your artwork',
+          artwork: artwork._id,
+        });
+      }
     }
     await artwork.save();
     res.json({ likes: artwork.likes, liked: !alreadyLiked });
