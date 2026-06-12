@@ -13,6 +13,8 @@ const userSchema = new mongoose.Schema({
   role: { type: String, default: '3D Artist' },
   followers: { type: Number, default: 0 },
   following: { type: Number, default: 0 },
+  followedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  followingList: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

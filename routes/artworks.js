@@ -15,18 +15,14 @@ const auth = (req, res, next) => {
   }
 };
 
-// Upload artwork با چند عکس
+// Upload artwork
 router.post('/', auth, upload.array('images', 10), async (req, res) => {
   try {
     const { title, description, category, tags, price, software } = req.body;
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ message: 'No images uploaded' });
-    }
+    if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'No images uploaded' });
     const imageUrls = req.files.map(f => f.path);
     const artwork = await Artwork.create({
-      title,
-      description,
-      category,
+      title, description, category,
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
       software: software ? software.split(',').map(s => s.trim()).filter(Boolean) : [],
       price: price || 0,
@@ -44,9 +40,7 @@ router.post('/', auth, upload.array('images', 10), async (req, res) => {
 // Get all artworks
 router.get('/', async (req, res) => {
   try {
-    const artworks = await Artwork.find()
-      .populate('artist', 'name avatar')
-      .sort({ createdAt: -1 });
+    const artworks = await Artwork.find().populate('artist', 'name avatar').sort({ createdAt: -1 });
     res.json(artworks);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -56,10 +50,8 @@ router.get('/', async (req, res) => {
 // Get artwork by id
 router.get('/:id', async (req, res) => {
   try {
-    const artwork = await Artwork.findById(req.params.id)
-      .populate('artist', 'name avatar');
+    const artwork = await Artwork.findById(req.params.id).populate('artist', 'name avatar _id');
     if (!artwork) return res.status(404).json({ message: 'Not found' });
-    // افزایش views
     await Artwork.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
     res.json(artwork);
   } catch (err) {
@@ -67,15 +59,21 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Like artwork
+// Toggle Like
 router.post('/:id/like', auth, async (req, res) => {
   try {
-    const artwork = await Artwork.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { likes: 1 } },
-      { new: true }
-    );
-    res.json(artwork);
+    const artwork = await Artwork.findById(req.params.id);
+    if (!artwork) return res.status(404).json({ message: 'Not found' });
+    const alreadyLiked = artwork.likedBy?.map(id => id.toString()).includes(req.user.id);
+    if (alreadyLiked) {
+      artwork.likes = Math.max(0, artwork.likes - 1);
+      artwork.likedBy = artwork.likedBy.filter(id => id.toString() !== req.user.id);
+    } else {
+      artwork.likes += 1;
+      artwork.likedBy = [...(artwork.likedBy || []), req.user.id];
+    }
+    await artwork.save();
+    res.json({ likes: artwork.likes, liked: !alreadyLiked });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -86,8 +84,7 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const artwork = await Artwork.findById(req.params.id);
     if (!artwork) return res.status(404).json({ message: 'Not found' });
-    if (artwork.artist.toString() !== req.user.id)
-      return res.status(403).json({ message: 'Not authorized' });
+    if (artwork.artist.toString() !== req.user.id) return res.status(403).json({ message: 'Not authorized' });
     for (const img of artwork.images || [artwork.img]) {
       const publicId = img.split('/').pop().split('.')[0];
       await cloudinary.uploader.destroy(`artfolio/${publicId}`);

@@ -12,6 +12,7 @@ const artworkSchema = new mongoose.Schema({
   artist: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   likes: { type: Number, default: 0 },
   views: { type: Number, default: 0 },
+  likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 }, { timestamps: true });
 
 module.exports = mongoose.model('Artwork', artworkSchema);
