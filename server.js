@@ -13,9 +13,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const authRoutes = require('./routes/auth');
 const artworkRoutes = require('./routes/artworks');
+const cartRoutes = require('./routes/cart');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/artworks', artworkRoutes);
+app.use('/api/cart', cartRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: '🎨 ArtFolio API is running!' });
