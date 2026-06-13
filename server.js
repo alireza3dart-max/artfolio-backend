@@ -8,7 +8,7 @@ const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const session = require('express-session');
-const passport = require('./config/passport');
+const passport = require('./config/passport.js');
 
 dotenv.config();
 

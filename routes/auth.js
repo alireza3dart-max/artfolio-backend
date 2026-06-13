@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { upload } = require('../middleware/upload');
 const { sendEmail, emailTemplates } = require('../utils/email');
-const passport = require('../config/passport');
+const passport = require('../config/passport.js');
 
 const router = express.Router();
 
