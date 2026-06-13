@@ -7,10 +7,24 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
+const session = require('express-session');
+const passport = require('./config/passport');
 
 dotenv.config();
 
 const app = express();
+
+// Session
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'artfolio_session_secret_2024',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
+}));
+
+// Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Security Headers
 app.use(helmet({
@@ -26,6 +40,7 @@ app.use(cors({
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 
 app.use(express.json({ limit: '10mb' }));
