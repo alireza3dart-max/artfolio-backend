@@ -26,12 +26,16 @@ passport.use(new GoogleStrategy({
 
     // کاربر جدید
     user = await User.create({
-      googleId: profile.id,
-      name: profile.displayName,
-      email: profile.emails[0].value,
-      avatar: profile.photos[0]?.value || '',
-      password: Math.random().toString(36).slice(-8) + '!Aa1',
-    });
+  name: profile.displayName,
+  email: profile.emails[0].value,
+  avatar: profile.photos[0]?.value || '',
+  password: Math.random().toString(36),
+  googleId: profile.id,
+  followers: 0,
+  following: 0,
+  followingList: [],
+  followedBy: [],
+});
 
     // Welcome email
     sendEmail({
