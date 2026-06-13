@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { upload } = require('../middleware/upload');
+const { sendEmail, emailTemplates } = require('../utils/email');
 
 const router = express.Router();
 
@@ -20,6 +21,14 @@ router.post('/register', async (req, res) => {
     const hashed = await bcrypt.hash(password, 12);
     const user = await User.create({ name, email: email.toLowerCase(), password: hashed });
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    // Welcome email
+    sendEmail({
+      to: email,
+      subject: '🎨 Welcome to ArtFolio!',
+      html: emailTemplates.welcome(name),
+    });
+
     res.json({ token, user: { id: user._id, _id: user._id, name: user.name, email: user.email, avatar: user.avatar } });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -112,6 +121,29 @@ router.put('/change-password', async (req, res) => {
   }
 });
 
+// Forgot Password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email required' });
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const resetLink = `https://artfolio-frontend-lac.vercel.app/reset-password?token=${resetToken}`;
+
+    sendEmail({
+      to: email,
+      subject: '🔑 Reset Your ArtFolio Password',
+      html: emailTemplates.resetPassword(user.name, resetLink),
+    });
+
+    res.json({ message: 'Reset email sent!' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Follow / Unfollow
 router.post('/follow/:id', async (req, res) => {
   try {
@@ -119,9 +151,11 @@ router.post('/follow/:id', async (req, res) => {
     if (!token) return res.status(401).json({ message: 'No token' });
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (decoded.id === req.params.id) return res.status(400).json({ message: 'Cannot follow yourself' });
+
     const me = await User.findById(decoded.id);
     const target = await User.findById(req.params.id);
     if (!target) return res.status(404).json({ message: 'User not found' });
+
     const alreadyFollowing = me.followingList?.map(id => id.toString()).includes(req.params.id);
     if (alreadyFollowing) {
       me.followingList = me.followingList.filter(id => id.toString() !== req.params.id);
@@ -133,13 +167,24 @@ router.post('/follow/:id', async (req, res) => {
       me.following += 1;
       target.followedBy = [...(target.followedBy || []), decoded.id];
       target.followers += 1;
+
       await Notification.create({
         recipient: req.params.id,
         sender: decoded.id,
         type: 'follow',
         message: 'started following you',
       });
+
+      // Email notification
+      if (target.email) {
+        sendEmail({
+          to: target.email,
+          subject: `👤 ${me.name} started following you on ArtFolio!`,
+          html: emailTemplates.newFollower(target.name, me.name),
+        });
+      }
     }
+
     await me.save();
     await target.save();
     res.json({ following: !alreadyFollowing, followers: target.followers });
